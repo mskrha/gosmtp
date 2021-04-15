@@ -41,7 +41,7 @@ func NewServer(h, a string) (*SMTP, error) {
 	return &s, nil
 }
 
-func (s *SMTP) Send(m Message) (err error) {
+func (s *SMTP) Send(m Message) (id string, err error) {
 	host, err := os.Hostname()
 	if err != nil {
 		return
@@ -94,5 +94,22 @@ func (s *SMTP) Send(m Message) (err error) {
 		return
 	}
 
-	return c.Quit()
+	err = c.Quit()
+	if err == nil {
+		err = fmt.Errorf("No response on QUIT command")
+		return
+	}
+
+	e := strings.Fields(err.Error())
+	if len(e) < 3 {
+		err = fmt.Errorf("Invalid response from SMTP proxy: %s", err.Error())
+		return
+	}
+
+	if e[0] == "250" {
+		id = e[len(e)-1]
+		err = nil
+	}
+
+	return
 }
